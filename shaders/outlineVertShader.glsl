@@ -10,6 +10,7 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform float uTime;
 uniform vec3 cameraPos;
+uniform float step;
 
 out vec3 pos;
 
@@ -19,12 +20,10 @@ float hash(vec2 p) {
 
 void main() {
     pos = aPos;
-    vec3 wave = vec3(hash(pos.xy + uTime * 0.000001f)) * 0.5f;
+    vec3 wave = vec3(hash(pos.xy + (sin(uTime * 0.00001f)+1)/2)) * 0.1f;
     wave.x = 0;
-    wave.y -= 0.05f;
     wave.z = 0;
     vec4 worldPos = model * vec4(aPos + wave, 1.0);
-    float distance = length(worldPos.xyz - cameraPos);
 
     if(pos.y == 0)
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);

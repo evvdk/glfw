@@ -10,12 +10,18 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform float uTime;
 uniform vec3 cameraPos;
-uniform float drawDistance;
 
 out vec3 pos;
 
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(43.232, 75.876)))*4526.3257);
+}
+
 void main() {
     pos = aPos;
-    vec4 worldPos = model * vec4(aPos, 1.0);
+    vec3 wave = vec3(hash(pos.xy + (sin(uTime * 0.00001f)+1)/2)) * 0.1f;
+    wave.x = 0;
+    wave.z = 0;
+    vec4 worldPos = model * vec4(aPos + wave, 1.0);
     gl_Position = projection * view * worldPos;
 }

@@ -149,7 +149,7 @@ int main() {
 
     glm::mat4 model = glm::mat4(1.0f);
     glm::mat4 view;
-    glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1900.0f / 1080.0f, 0.1f, 100.0f);  
+    glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1900.0f / 1080.0f, 0.1f, 1000.0f);  
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -173,6 +173,7 @@ int main() {
         mapShader.pass4fv(projection, "projection");
         mapShader.pass3f(cameraPos, "cameraPos");
         mapShader.pass1f(timeValue, "uTime");
+        mapShader.pass1f(step, "step");
 
         glBindVertexArray(VAO);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -187,6 +188,7 @@ int main() {
         outlineShader.pass4fv(projection, "projection");
         outlineShader.pass3f(cameraPos, "cameraPos");
         outlineShader.pass1f(timeValue, "uTime");  
+        outlineShader.pass1f(step, "step");
 
         glBindVertexArray(VAO);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

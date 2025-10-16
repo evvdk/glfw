@@ -1,5 +1,4 @@
 class Actor {
     public:
-        virtual void update() = 0;
-        virtual ~Actor() = 0;
+        virtual void update(float dt) = 0;
 };

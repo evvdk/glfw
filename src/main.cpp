@@ -8,6 +8,7 @@
 #include <vector>
 #include "shader.hpp"
 #include "map.hpp"
+#include "volumeMap.hpp"
 
 glm::vec3 cameraPos   = glm::vec3(0.0f, 10.0f,  0.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, -0.3f, -1.0f);
@@ -70,11 +71,22 @@ void processInput(GLFWwindow *window)
 
 int main() {
     glfwInit();
+
+
+    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+    if (!primaryMonitor) {
+        std::cerr << "Failed to get primary monitor\n";
+        glfwTerminate();
+        return -1;
+    }
+
+    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Polygon with Shader", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "Fullscreen Window", primaryMonitor, nullptr);
     if (!window) {
         std::cout << "Ошибка создания окна!\n";
         glfwTerminate();
@@ -91,65 +103,23 @@ int main() {
         return -1;
     }
 
-    Shader mapShader;
-    mapShader.compile("../shaders/mapVertShader.glsl", "../shaders/mapFragShader.glsl");
-
-    Shader outlineShader;
-    outlineShader.compile("../shaders/outlineVertShader.glsl", "../shaders/outlineFragShader.glsl");
-
     glEnable(GL_DEPTH_TEST);
 
     Map map;
     map.loadMap("../textures/test.jpg");
 
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
-
-    float step = 0.2f;
-    int width  = map.getWidth();
-    int height = map.getHeight();
-
-    for (int z = 0; z <= height; z++) {
-        for (int x = 0; x <= width; x++) {
-            float h = map.getPixel(z,x) * 10.f;
-            vertices.push_back((x - width/2) * step);
-            vertices.push_back(h);
-            vertices.push_back((z - height/2) * step);
-        }
-    }
-
-    for (int z = 0; z < height; z++) {
-        for (int x = 0; x < width; x++) {
-            int start = z * (width + 1) + x;
-            
-            indices.push_back(start);
-            indices.push_back(start + 1);
-            indices.push_back(start + (width + 1));
-
-            indices.push_back(start + 1);
-            indices.push_back(start + 1 + (width + 1));
-            indices.push_back(start + (width + 1));
-        }
-    }
-
-    unsigned int VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    VolumeMap* vMap = new VolumeMap();
+    vMap->generate(map, 0.2f, 10.f);
 
     glm::mat4 model = glm::mat4(1.0f);
     glm::mat4 view;
-    glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1900.0f / 1080.0f, 0.1f, 1000.0f);  
+    glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1900.0f / 1080.0f, 0.1f, 1000.0f); 
+
+    Shader mapShader;
+    mapShader.compile("../shaders/mapVertShader.glsl", "../shaders/mapFragShader.glsl");
+
+    Shader outlineShader;
+    outlineShader.compile("../shaders/outlineVertShader.glsl", "../shaders/outlineFragShader.glsl");
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -173,14 +143,12 @@ int main() {
         mapShader.pass4fv(projection, "projection");
         mapShader.pass3f(cameraPos, "cameraPos");
         mapShader.pass1f(timeValue, "uTime");
-        mapShader.pass1f(step, "step");
-
-        glBindVertexArray(VAO);
+        
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        vMap->update(deltaTime);
 
         mapShader.deactivate();
-        
+
         outlineShader.activate();
         
         outlineShader.pass4fv(model, "model");
@@ -188,11 +156,9 @@ int main() {
         outlineShader.pass4fv(projection, "projection");
         outlineShader.pass3f(cameraPos, "cameraPos");
         outlineShader.pass1f(timeValue, "uTime");  
-        outlineShader.pass1f(step, "step");
 
-        glBindVertexArray(VAO);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        vMap->update(deltaTime);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         outlineShader.deactivate();
@@ -200,9 +166,7 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    delete vMap;
 
     glfwTerminate();
     return 0;
